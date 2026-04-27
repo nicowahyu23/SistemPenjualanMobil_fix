@@ -15,12 +15,11 @@ public class FormPenjualan extends JFrame {
     private double hargaDipilih = 0;
     private JTextField txtNama;
     private JPanel panelList;
-    private JLabel lblMerkActive;
+    private JPanel panelTabContainer;
     private JPanel panelBottom;
     private JLabel lblSelectedInfo;
 
     Color BG = new Color(245, 247, 250);
-    Color BG_DARK = new Color(8, 20, 50);
     Color BLUE = new Color(10, 36, 99);
     Color BLUE_BTN = new Color(15, 55, 150);
     Color ACCENT = new Color(0, 120, 215);
@@ -29,26 +28,34 @@ public class FormPenjualan extends JFrame {
     Color BORDER = new Color(220, 225, 235);
 
     Object[][] dataToyota = {
-        {"Fortuner", 543000000.0, "fortuner.jpg", "Bensin"},
+        {"Fortuner", 543000000.0, "fortuner.jpg", "Diesel"},
         {"Innova", 417800000.0, "innova.jpg", "Diesel"},
         {"Avanza", 243700000.0, "avanza.jpg", "Bensin"},
         {"Rush", 272400000.0, "rush.jpg", "Bensin"},
-        {"Yaris", 330900000.0, "yaris.jpg", "Bensin"}
+        {"Yaris", 330900000.0, "yaris.jpg", "Bensin"},
+        {"bZ4X", 890000000.0, "bz4x.jpg", "Listrik"}
     };
 
-    Object[][] dataHonda = {
-        {"Brio", 165900000.0, "brio.jpg", "Bensin"},
-        {"HR-V", 389900000.0, "hrv.jpg", "Bensin"},
-        {"Civic", 539900000.0, "civic.jpg", "Bensin"},
-        {"Jazz", 340000000.0, "jazz.jpg", "Bensin"}
+    Object[][] dataMitsubishi = {
+        {"Pajero Sport", 650000000.0, "pajero.jpg", "Diesel"},
+        {"Xpander", 275900000.0, "xpander.jpg", "Bensin"},
+        {"Xforce", 369900000.0, "xforce.jpg", "Bensin"},
+        {"Destinator", 420000000.0, "destinator.jpg", "Bensin"}
     };
 
     Object[][] dataHyundai = {
         {"Ioniq 5", 809000000.0, "ioniq5.jpg", "Listrik"},
         {"Ioniq 6", 1237200000.0, "ioniq6.jpg", "Listrik"},
         {"Kona Electric", 565300000.0, "kona.jpg", "Listrik"},
-        {"Tucson", 599000000.0, "tucson.jpg", "Bensin"}
+        {"Tucson", 599000000.0, "tucson.jpg", "Bensin"},
+        {"Palisade", 850000000.0, "palisade.jpg", "Diesel"},
+        {"Santa Fe", 620000000.0, "santafe.jpg", "Bensin"},
+        {"Stargazer", 340000000.0, "stargazer.jpg", "Bensin"}
     };
+
+    String[] filterToyota = {"Semua", "Bensin", "Diesel", "Listrik"};
+    String[] filterMitsubishi = {"Semua", "Bensin", "Diesel"};
+    String[] filterHyundai = {"Semua", "Listrik", "Bensin", "Diesel"};
 
     public FormPenjualan() {
         setTitle("Showroom Mobil Nusantara");
@@ -123,7 +130,7 @@ public class FormPenjualan extends JFrame {
         lblBrand.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(lblBrand);
 
-        String[] merks = {"Toyota", "Honda", "Hyundai"};
+        String[] merks = {"Toyota", "Mitsubishi", "Hyundai"};
         for (String merk : merks) {
             JPanel item = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
             item.setBackground(merk.equals(merkDipilih) ? new Color(235, 240, 255) : Color.WHITE);
@@ -138,9 +145,8 @@ public class FormPenjualan extends JFrame {
 
             item.addMouseListener(new MouseAdapter() {
                 public void mouseEntered(MouseEvent e) {
-                    if (!merkDipilih.equals(merk)) {
+                    if (!merkDipilih.equals(merk))
                         item.setBackground(new Color(245, 247, 255));
-                    }
                 }
                 public void mouseExited(MouseEvent e) {
                     item.setBackground(merkDipilih.equals(merk) ? new Color(235, 240, 255) : Color.WHITE);
@@ -150,9 +156,7 @@ public class FormPenjualan extends JFrame {
                     filterBB = "Semua";
                     tipeDipilih = "";
                     hargaDipilih = 0;
-                    panelBottom.setVisible(false);
-                    refreshSidebar();
-                    tampilkanList();
+                    refreshAll();
                 }
             });
 
@@ -167,27 +171,46 @@ public class FormPenjualan extends JFrame {
         return sidebar;
     }
 
-    private void refreshSidebar() {
-        getContentPane().removeAll();
-        add(buatHeader(), BorderLayout.NORTH);
-        add(buatSidebar(), BorderLayout.WEST);
-        add(buatMain(), BorderLayout.CENTER);
-        revalidate();
-        repaint();
-        tampilkanList();
-    }
-
     private JPanel buatMain() {
         JPanel main = new JPanel(new BorderLayout());
         main.setBackground(BG);
 
-        // Tab filter BB
-        JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        tabPanel.setBackground(Color.WHITE);
-        tabPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER));
-        tabPanel.setPreferredSize(new Dimension(800, 50));
+        panelTabContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        panelTabContainer.setBackground(Color.WHITE);
+        panelTabContainer.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER));
+        panelTabContainer.setPreferredSize(new Dimension(800, 50));
+        buatTabs();
+        main.add(panelTabContainer, BorderLayout.NORTH);
 
-        String[] filters = {"Semua", "Bensin", "Diesel", "Listrik"};
+        panelList = new JPanel();
+        panelList.setLayout(new BoxLayout(panelList, BoxLayout.Y_AXIS));
+        panelList.setBackground(BG);
+        panelList.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        JScrollPane scroll = new JScrollPane(panelList);
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(BG);
+        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        main.add(scroll, BorderLayout.CENTER);
+
+        panelBottom = new JPanel(new BorderLayout());
+        panelBottom.setBackground(BLUE);
+        panelBottom.setPreferredSize(new Dimension(800, 65));
+        panelBottom.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
+        panelBottom.setVisible(false);
+        main.add(panelBottom, BorderLayout.SOUTH);
+
+        return main;
+    }
+
+    private void buatTabs() {
+        panelTabContainer.removeAll();
+
+        String[] filters;
+        if (merkDipilih.equals("Toyota")) filters = filterToyota;
+        else if (merkDipilih.equals("Mitsubishi")) filters = filterMitsubishi;
+        else filters = filterHyundai;
+
         for (String f : filters) {
             JButton tab = new JButton(f);
             tab.setFont(new Font("Arial", Font.BOLD, 13));
@@ -208,104 +231,25 @@ public class FormPenjualan extends JFrame {
 
             tab.addActionListener(e -> {
                 filterBB = f;
+                buatTabs();
                 tampilkanList();
-                refreshTabs(tabPanel, f, filters);
             });
 
-            tabPanel.add(tab);
+            panelTabContainer.add(tab);
         }
 
-        main.add(tabPanel, BorderLayout.NORTH);
-
-        // List mobil
-        panelList = new JPanel();
-        panelList.setLayout(new BoxLayout(panelList, BoxLayout.Y_AXIS));
-        panelList.setBackground(BG);
-        panelList.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-
-        JScrollPane scroll = new JScrollPane(panelList);
-        scroll.setBorder(null);
-        scroll.getViewport().setBackground(BG);
-        scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        main.add(scroll, BorderLayout.CENTER);
-
-        // Bottom bar
-        panelBottom = new JPanel(new BorderLayout());
-        panelBottom.setBackground(BLUE);
-        panelBottom.setPreferredSize(new Dimension(800, 65));
-        panelBottom.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        panelBottom.setVisible(false);
-
-        lblSelectedInfo = new JLabel("Belum ada yang dipilih");
-        lblSelectedInfo.setFont(new Font("Arial", Font.BOLD, 14));
-        lblSelectedInfo.setForeground(Color.WHITE);
-        panelBottom.add(lblSelectedInfo, BorderLayout.WEST);
-
-        JButton btnBeli = new JButton("BELI  →");
-        btnBeli.setFont(new Font("Arial", Font.BOLD, 14));
-        btnBeli.setBackground(Color.WHITE);
-        btnBeli.setForeground(BLUE);
-        btnBeli.setBorderPainted(false);
-        btnBeli.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnBeli.setPreferredSize(new Dimension(130, 42));
-        btnBeli.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                btnBeli.setBackground(new Color(220, 230, 255));
-            }
-            public void mouseExited(MouseEvent e) {
-                btnBeli.setBackground(Color.WHITE);
-            }
-        });
-
-        btnBeli.addActionListener(e -> {
-            if (txtNama.getText().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Masukkan nama pembeli dulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            Mobil mobil;
-            if (merkDipilih.equals("Toyota")) {
-                mobil = new Toyota(tipeDipilih, cariJenisBB(dataToyota, tipeDipilih), hargaDipilih);
-            } else if (merkDipilih.equals("Honda")) {
-                mobil = new Honda(tipeDipilih, cariJenisBB(dataHonda, tipeDipilih), hargaDipilih);
-            } else {
-                mobil = new Hyundai(tipeDipilih, hargaDipilih);
-            }
-            new FormInvoice(mobil, txtNama.getText()).setVisible(true);
-        });
-
-        panelBottom.add(btnBeli, BorderLayout.EAST);
-        main.add(panelBottom, BorderLayout.SOUTH);
-
-        return main;
+        panelTabContainer.revalidate();
+        panelTabContainer.repaint();
     }
 
-    private void refreshTabs(JPanel tabPanel, String active, String[] filters) {
-        tabPanel.removeAll();
-        for (String f : filters) {
-            JButton tab = new JButton(f);
-            tab.setFont(new Font("Arial", Font.BOLD, 13));
-            tab.setPreferredSize(new Dimension(110, 50));
-            tab.setBorderPainted(false);
-            tab.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            tab.setFocusPainted(false);
-            if (f.equals(active)) {
-                tab.setBackground(Color.WHITE);
-                tab.setForeground(BLUE);
-                tab.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, BLUE));
-            } else {
-                tab.setBackground(Color.WHITE);
-                tab.setForeground(TEXT_GRAY);
-                tab.setBorder(BorderFactory.createEmptyBorder());
-            }
-            tab.addActionListener(e -> {
-                filterBB = f;
-                tampilkanList();
-                refreshTabs(tabPanel, f, filters);
-            });
-            tabPanel.add(tab);
-        }
-        tabPanel.revalidate();
-        tabPanel.repaint();
+    private void refreshAll() {
+        getContentPane().removeAll();
+        add(buatHeader(), BorderLayout.NORTH);
+        add(buatSidebar(), BorderLayout.WEST);
+        add(buatMain(), BorderLayout.CENTER);
+        revalidate();
+        repaint();
+        tampilkanList();
     }
 
     private String cariJenisBB(Object[][] data, String tipe) {
@@ -321,7 +265,7 @@ public class FormPenjualan extends JFrame {
 
         Object[][] data;
         if (merkDipilih.equals("Toyota")) data = dataToyota;
-        else if (merkDipilih.equals("Honda")) data = dataHonda;
+        else if (merkDipilih.equals("Mitsubishi")) data = dataMitsubishi;
         else data = dataHyundai;
 
         boolean ada = false;
@@ -334,19 +278,16 @@ public class FormPenjualan extends JFrame {
             if (!filterBB.equals("Semua") && !bb.equals(filterBB)) continue;
             ada = true;
 
-            // Card list
             JPanel card = new JPanel(new BorderLayout());
             card.setBackground(Color.WHITE);
-            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
             card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
                 BorderFactory.createEmptyBorder(15, 15, 15, 20)
             ));
-            card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-            // Foto
             JLabel lblFoto = new JLabel();
-            lblFoto.setPreferredSize(new Dimension(200, 130));
+            lblFoto.setPreferredSize(new Dimension(210, 140));
             lblFoto.setHorizontalAlignment(SwingConstants.CENTER);
             lblFoto.setBackground(new Color(245, 247, 250));
             lblFoto.setOpaque(true);
@@ -355,7 +296,7 @@ public class FormPenjualan extends JFrame {
                 String path = System.getProperty("user.dir") + "\\src\\images\\" + gambar;
                 File imgFile = new File(path);
                 if (imgFile.exists()) {
-                    Image img = ImageIO.read(imgFile).getScaledInstance(200, 130, Image.SCALE_SMOOTH);
+                    Image img = ImageIO.read(imgFile).getScaledInstance(210, 140, Image.SCALE_SMOOTH);
                     lblFoto.setIcon(new ImageIcon(img));
                 } else {
                     lblFoto.setText("No Image");
@@ -367,7 +308,6 @@ public class FormPenjualan extends JFrame {
 
             card.add(lblFoto, BorderLayout.WEST);
 
-            // Info
             JPanel info = new JPanel();
             info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
             info.setBackground(Color.WHITE);
@@ -378,8 +318,7 @@ public class FormPenjualan extends JFrame {
             lblTipe.setForeground(TEXT);
 
             Color bbColor = bb.equals("Listrik") ? new Color(0, 150, 80) :
-                            bb.equals("Diesel") ? new Color(180, 90, 0) :
-                            ACCENT;
+                            bb.equals("Diesel") ? new Color(180, 90, 0) : ACCENT;
             JLabel lblBB = new JLabel(bb);
             lblBB.setFont(new Font("Arial", Font.PLAIN, 12));
             lblBB.setForeground(bbColor);
@@ -402,8 +341,8 @@ public class FormPenjualan extends JFrame {
             btnBeli.setForeground(Color.WHITE);
             btnBeli.setBorderPainted(false);
             btnBeli.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            btnBeli.setPreferredSize(new Dimension(120, 35));
-            btnBeli.setMaximumSize(new Dimension(120, 35));
+            btnBeli.setPreferredSize(new Dimension(120, 36));
+            btnBeli.setMaximumSize(new Dimension(120, 36));
             btnBeli.addMouseListener(new MouseAdapter() {
                 public void mouseEntered(MouseEvent e) { btnBeli.setBackground(ACCENT); }
                 public void mouseExited(MouseEvent e) { btnBeli.setBackground(BLUE_BTN); }
@@ -416,7 +355,7 @@ public class FormPenjualan extends JFrame {
                 }
                 Mobil m;
                 if (merkDipilih.equals("Toyota")) m = new Toyota(tipe, bb, harga);
-                else if (merkDipilih.equals("Honda")) m = new Honda(tipe, bb, harga);
+                else if (merkDipilih.equals("Mitsubishi")) m = new Mitsubishi(tipe, bb, harga);
                 else m = new Hyundai(tipe, harga);
                 new FormInvoice(m, txtNama.getText()).setVisible(true);
             });
