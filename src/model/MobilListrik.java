@@ -1,8 +1,10 @@
 package model;
 
 public class MobilListrik extends Mobil {
-    public MobilListrik(String merk, String tipe, double harga) {
-        super(merk, tipe, "Listrik", harga);
+    private static final long serialVersionUID = 1L;
+
+    public MobilListrik(String merk, String tipe, double harga, int stok, String gambar) {
+        super(merk, tipe, "Listrik", harga, stok, gambar);
     }
 
     @Override
@@ -10,6 +12,6 @@ public class MobilListrik extends Mobil {
         return "Merk       : " + merk + "\n" +
                "Tipe       : " + tipe + "\n" +
                "Bahan Bakar: Listrik (EV)\n" +
-               "Harga      : Rp " + (long)harga;
+               "Harga      : Rp " + (long) harga;
     }
 }

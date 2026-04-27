@@ -1,6 +1,8 @@
 package view;
 
-import model.Mobil;
+import model.*;
+import service.RepositoryTransaksi;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
@@ -12,12 +14,6 @@ import java.util.Locale;
 
 public class FormInvoice extends JFrame implements Printable {
 
-    private final Mobil mobil;
-    private final String namaPembeli;
-    private final String noNota;
-    private final String tanggal;
-    private JPanel paperPanel;
-
     private static final Color BG          = new Color(245, 247, 250);
     private static final Color CARD        = Color.WHITE;
     private static final Color BORDER      = new Color(225, 228, 232);
@@ -27,14 +23,45 @@ public class FormInvoice extends JFrame implements Printable {
     private static final Color BTN_PRIMARY = new Color(10, 36, 99);
     private static final Color BTN_DANGER  = new Color(200, 50, 50);
 
-    public FormInvoice(Mobil mobil, String namaPembeli) {
-        this.mobil = mobil;
-        this.namaPembeli = (namaPembeli == null || namaPembeli.trim().isEmpty()) ? "-" : namaPembeli.trim();
-        this.tanggal = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"));
-        this.noNota = "INV-" + (System.currentTimeMillis() % 100000);
+    private final FormPenjualan parent;
+    private final Transaksi     transaksi;
+    private JPanel paperPanel;
 
-        setTitle("Ringkasan Pembelian");
-        setSize(720, 760);
+    public FormInvoice(FormPenjualan parent,
+                       User userLogin,
+                       String namaPembeli,
+                       Mobil mobil,
+                       VarianMobil varian,
+                       String warna,
+                       String velg,
+                       Pembayaran pembayaran) {
+        this.parent = parent;
+        this.transaksi = new Transaksi(
+            "INV-" + (System.currentTimeMillis() % 100000),
+            LocalDateTime.now(),
+            (namaPembeli == null || namaPembeli.trim().isEmpty()) ? "-" : namaPembeli.trim(),
+            userLogin.getUsername(),
+            mobil, varian, warna, velg, pembayaran
+        );
+
+        // Persist transaksi & decrement stok exactly once when invoice is opened.
+        mobil.kurangiStok();
+        RepositoryTransaksi.simpan(transaksi);
+        if (parent != null) parent.refreshSetelahTransaksi();
+
+        initUi();
+    }
+
+    /** Constructor sekunder: untuk view nota lama dari FormRiwayat (tanpa side-effect). */
+    public FormInvoice(Transaksi t) {
+        this.parent    = null;
+        this.transaksi = t;
+        initUi();
+    }
+
+    private void initUi() {
+        setTitle("Nota " + transaksi.getNoNota());
+        setSize(720, 820);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         getContentPane().setBackground(BG);
@@ -50,7 +77,7 @@ public class FormInvoice extends JFrame implements Printable {
         add(buildActions(), BorderLayout.SOUTH);
     }
 
-    // ---------- UI builders ----------
+    // ---------- builders ----------
 
     private JPanel buildPaper() {
         JPanel paper = new JPanel();
@@ -62,7 +89,9 @@ public class FormInvoice extends JFrame implements Printable {
         paper.add(Box.createVerticalStrut(18));
         paper.add(buildInfoCard());
         paper.add(Box.createVerticalStrut(18));
-        paper.add(buildSummaryCard());
+        paper.add(buildKendaraanCard());
+        paper.add(Box.createVerticalStrut(18));
+        paper.add(buildPembayaranCard());
         paper.add(Box.createVerticalStrut(22));
         paper.add(buildTotal());
         paper.add(Box.createVerticalStrut(8));
@@ -91,35 +120,59 @@ public class FormInvoice extends JFrame implements Printable {
 
     private JPanel buildInfoCard() {
         JPanel card = card();
+        String tanggal = transaksi.getTanggal()
+            .format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"));
 
         card.add(sectionTitle("Informasi Pembelian"));
         card.add(divider());
-        card.add(infoRow("Showroom",    "Mobil Nusantara \u2013 Jl. Sudirman No.1, Jakarta"));
-        card.add(infoRow("No. Nota",    noNota));
-        card.add(infoRow("Tanggal",     tanggal));
-        card.add(infoRow("Pembeli",     namaPembeli));
-
+        card.add(infoRow("Showroom", "Mobil Nusantara \u2013 Jl. Sudirman No.1, Jakarta"));
+        card.add(infoRow("No. Nota", transaksi.getNoNota()));
+        card.add(infoRow("Tanggal",  tanggal));
+        card.add(infoRow("Pembeli",  transaksi.getNamaPembeli()));
+        card.add(infoRow("Petugas",  transaksi.getUsernamePetugas()));
         return card;
     }
 
-    private JPanel buildSummaryCard() {
+    private JPanel buildKendaraanCard() {
         JPanel card = card();
-
         card.add(sectionTitle("Trim"));
         card.add(divider());
         card.add(lineItem(
-            mobil.getMerk() + " " + mobil.getTipe() + "  ( " + mobil.getJenisBB() + " )",
-            formatRupiah(mobil.getHarga())
+            transaksi.getMerk() + " " + transaksi.getTipe()
+                + "  ( " + transaksi.getVarianNama() + " )",
+            formatRupiah(transaksi.getHargaMobil() + transaksi.getVarianTambahan())
         ));
 
-        card.add(Box.createVerticalStrut(14));
+        card.add(Box.createVerticalStrut(12));
+        card.add(sectionTitle("Tampak Luar"));
+        card.add(divider());
+        card.add(lineItem(transaksi.getWarna(), "+Rp 0", false));
+        card.add(lineItem(transaksi.getVelg(),  "+Rp 0", false));
 
+        card.add(Box.createVerticalStrut(12));
         card.add(sectionTitle("Detail Kendaraan"));
         card.add(divider());
-        card.add(lineItem("Merk",        mobil.getMerk(),      false));
-        card.add(lineItem("Tipe",        mobil.getTipe(),      false));
-        card.add(lineItem("Bahan Bakar", mobil.getJenisBB(),   false));
+        card.add(lineItem("Merk",        transaksi.getMerk(),    false));
+        card.add(lineItem("Tipe",        transaksi.getTipe(),    false));
+        card.add(lineItem("Bahan Bakar", transaksi.getJenisBB(), false));
+        return card;
+    }
 
+    private JPanel buildPembayaranCard() {
+        JPanel card = card();
+        card.add(sectionTitle("Pembayaran"));
+        card.add(divider());
+
+        Pembayaran p = transaksi.getPembayaran();
+        for (String line : p.getRincian().split("\n")) {
+            // tiap baris dipecah ke "label : value" untuk tampilan rapi
+            String[] parts = line.split(":", 2);
+            if (parts.length == 2) {
+                card.add(infoRow(parts[0].trim(), parts[1].trim()));
+            } else {
+                card.add(infoRow(line, ""));
+            }
+        }
         return card;
     }
 
@@ -130,11 +183,11 @@ public class FormInvoice extends JFrame implements Printable {
         row.setBorder(BorderFactory.createEmptyBorder(8, 4, 8, 4));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
 
-        JLabel lbl = new JLabel("Total Harga");
+        JLabel lbl = new JLabel("Total Bayar");
         lbl.setFont(new Font("Arial", Font.PLAIN, 22));
         lbl.setForeground(TEXT_MUTED);
 
-        JLabel val = new JLabel(formatRupiah(mobil.getHarga()));
+        JLabel val = new JLabel(formatRupiah(transaksi.getPembayaran().getTotalBayar()));
         val.setFont(new Font("Arial", Font.BOLD, 26));
         val.setForeground(TEXT);
         val.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -150,12 +203,12 @@ public class FormInvoice extends JFrame implements Printable {
         bar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
 
         JButton btnTutup = flatButton("Tutup", BTN_DANGER, Color.WHITE);
-        JButton btnPrint = flatButton("Cetak Nota", BTN_PRIMARY, Color.WHITE);
-
         btnTutup.addActionListener(e -> dispose());
+
+        JButton btnPrint = flatButton("Cetak Nota", BTN_PRIMARY, Color.WHITE);
         btnPrint.addActionListener(e -> {
             PrinterJob job = PrinterJob.getPrinterJob();
-            job.setJobName("Nota " + noNota);
+            job.setJobName("Nota " + transaksi.getNoNota());
             job.setPrintable(this);
             if (job.printDialog()) {
                 try { job.print(); }
@@ -211,7 +264,7 @@ public class FormInvoice extends JFrame implements Printable {
         JLabel l = new JLabel(label);
         l.setFont(new Font("Arial", Font.PLAIN, 13));
         l.setForeground(TEXT_MUTED);
-        l.setPreferredSize(new Dimension(140, 20));
+        l.setPreferredSize(new Dimension(180, 20));
 
         JLabel v = new JLabel(value);
         v.setFont(new Font("Arial", Font.PLAIN, 13));
@@ -223,11 +276,7 @@ public class FormInvoice extends JFrame implements Printable {
         return row;
     }
 
-    private JPanel lineItem(String label, String value) {
-        return lineItem(label, value, true);
-    }
-
-    private JPanel lineItem(String label, String value, boolean accentValue) {
+    private JPanel lineItem(String label, String value, boolean accent) {
         JPanel row = new JPanel(new BorderLayout());
         row.setBackground(CARD);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -236,16 +285,20 @@ public class FormInvoice extends JFrame implements Printable {
 
         JLabel l = new JLabel("\u2022   " + label);
         l.setFont(new Font("Arial", Font.PLAIN, 14));
-        l.setForeground(accentValue ? ACCENT : TEXT);
+        l.setForeground(accent ? ACCENT : TEXT);
 
         JLabel v = new JLabel(value);
-        v.setFont(new Font("Arial", accentValue ? Font.BOLD : Font.PLAIN, 14));
-        v.setForeground(accentValue ? ACCENT : TEXT);
+        v.setFont(new Font("Arial", accent ? Font.BOLD : Font.PLAIN, 14));
+        v.setForeground(accent ? ACCENT : TEXT);
         v.setHorizontalAlignment(SwingConstants.RIGHT);
 
         row.add(l, BorderLayout.WEST);
         row.add(v, BorderLayout.EAST);
         return row;
+    }
+
+    private JPanel lineItem(String label, String value) {
+        return lineItem(label, value, true);
     }
 
     private JButton flatButton(String text, Color bg, Color fg) {
@@ -271,7 +324,6 @@ public class FormInvoice extends JFrame implements Printable {
     @Override
     public int print(Graphics g, PageFormat pf, int page) throws PrinterException {
         if (page > 0) return NO_SUCH_PAGE;
-
         Graphics2D g2d = (Graphics2D) g;
         g2d.translate(pf.getImageableX(), pf.getImageableY());
 
