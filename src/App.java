@@ -1,7 +1,13 @@
-import view.FormPenjualan;
+import view.FormLogin;
+
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 public class App {
     public static void main(String[] args) {
-        new FormPenjualan();
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) {}
+        SwingUtilities.invokeLater(() -> new FormLogin().setVisible(true));
     }
 }

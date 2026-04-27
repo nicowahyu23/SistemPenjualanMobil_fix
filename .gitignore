@@ -1,0 +1,18 @@
+# Build output
+bin/
+*.class
+
+# Persisted runtime data (transaksi history)
+data/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db

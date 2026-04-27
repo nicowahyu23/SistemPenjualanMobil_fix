@@ -1,8 +1,10 @@
 package model;
 
 public class Toyota extends MobilBensin {
-    public Toyota(String tipe, String jenisBB, double harga) {
-        super("Toyota", tipe, harga);
+    private static final long serialVersionUID = 1L;
+
+    public Toyota(String tipe, String jenisBB, double harga, int stok, String gambar) {
+        super("Toyota", tipe, harga, stok, gambar);
         this.jenisBB = jenisBB;
     }
 
@@ -11,6 +13,6 @@ public class Toyota extends MobilBensin {
         return "Merk       : " + merk + "\n" +
                "Tipe       : " + tipe + "\n" +
                "Bahan Bakar: " + jenisBB + "\n" +
-               "Harga      : Rp " + (long)harga;
+               "Harga      : Rp " + (long) harga;
     }
 }
