@@ -1,12 +1,16 @@
 package view;
 
 import model.*;
+import service.PdfExporter;
 import service.RepositoryTransaksi;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.print.*;
+import java.io.File;
+import java.io.IOException;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -205,22 +209,49 @@ public class FormInvoice extends JFrame implements Printable {
         JButton btnTutup = flatButton("Tutup", BTN_DANGER, Color.WHITE);
         btnTutup.addActionListener(e -> dispose());
 
-        JButton btnPrint = flatButton("Cetak Nota", BTN_PRIMARY, Color.WHITE);
-        btnPrint.addActionListener(e -> {
-            PrinterJob job = PrinterJob.getPrinterJob();
-            job.setJobName("Nota " + transaksi.getNoNota());
-            job.setPrintable(this);
-            if (job.printDialog()) {
-                try { job.print(); }
-                catch (PrinterException ex) {
-                    JOptionPane.showMessageDialog(this, "Gagal print: " + ex.getMessage());
-                }
-            }
-        });
+        JButton btnPrint = flatButton("Cetak Nota (PDF)", BTN_PRIMARY, Color.WHITE);
+        btnPrint.addActionListener(e -> ekspordanCetakPdf());
 
         bar.add(btnTutup);
         bar.add(btnPrint);
         return bar;
+    }
+
+    /** Tombol "Cetak Nota": ekspor ke PDF, simpan, lalu coba auto-buka. */
+    private void ekspordanCetakPdf() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Simpan Nota PDF");
+        chooser.setSelectedFile(new File("Nota_" + transaksi.getNoNota() + ".pdf"));
+        chooser.setFileFilter(new FileNameExtensionFilter("PDF (*.pdf)", "pdf"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File file = chooser.getSelectedFile();
+        if (!file.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            file = new File(file.getParentFile(), file.getName() + ".pdf");
+        }
+
+        try {
+            PdfExporter.export(transaksi, file);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                "Gagal menulis PDF: " + ex.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Coba auto-open. Kalau gak didukung OS, kasih tau path-nya doang.
+        boolean opened = false;
+        if (Desktop.isDesktopSupported()) {
+            Desktop d = Desktop.getDesktop();
+            if (d.isSupported(Desktop.Action.OPEN)) {
+                try { d.open(file); opened = true; }
+                catch (IOException ignored) {}
+            }
+        }
+        JOptionPane.showMessageDialog(this,
+            "Nota PDF berhasil disimpan di:\n" + file.getAbsolutePath()
+                + (opened ? "\n\nFile sudah dibuka di viewer default." : ""),
+            "Berhasil", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // ---------- small helpers ----------

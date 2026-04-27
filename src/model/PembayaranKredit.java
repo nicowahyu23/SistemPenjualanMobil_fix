@@ -1,5 +1,7 @@
 package model;
 
+import java.util.Locale;
+
 /**
  * Pembayaran kredit dengan bunga FLAT sederhana:
  *   bunga total = pokok_dicicil * (bunga% / 100) * (tenor / 12)
@@ -41,14 +43,15 @@ public class PembayaranKredit extends Pembayaran {
 
     @Override
     public String getRincian() {
+        Locale id = new Locale("id", "ID");
         StringBuilder sb = new StringBuilder();
         sb.append("Metode       : Kredit\n");
         sb.append("DP (").append((long) persenDP).append("%)    : Rp ")
-          .append(String.format("%,d", (long) getDP())).append("\n");
+          .append(String.format(id, "%,d", (long) getDP())).append("\n");
         sb.append("Tenor        : ").append(tenorBulan).append(" bulan\n");
-        sb.append("Bunga        : ").append(String.format("%.1f", bungaTahunan)).append(" % / tahun (flat)\n");
-        sb.append("Cicilan/bln  : Rp ").append(String.format("%,d", (long) getCicilanPerBulan())).append("\n");
-        sb.append("Total Bayar  : Rp ").append(String.format("%,d", (long) getTotalBayar()));
+        sb.append("Bunga        : ").append(String.format(id, "%.1f", bungaTahunan)).append(" % / tahun (flat)\n");
+        sb.append("Cicilan/bln  : Rp ").append(String.format(id, "%,d", (long) getCicilanPerBulan())).append("\n");
+        sb.append("Total Bayar  : Rp ").append(String.format(id, "%,d", (long) getTotalBayar()));
         return sb.toString();
     }
 }
